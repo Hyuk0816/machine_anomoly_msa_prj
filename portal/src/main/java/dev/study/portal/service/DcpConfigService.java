@@ -1,6 +1,7 @@
 package dev.study.portal.service;
 
 import dev.study.portal.common.exception.dcp.DcpConfigNotFoundException;
+import dev.study.portal.common.exception.dcp.DuplicatedMachineDcpConfigException;
 import dev.study.portal.common.exception.machine.MachineNotFoundException;
 import dev.study.portal.dto.dcp.DcpConfigCreateDto;
 import dev.study.portal.dto.dcp.DcpConfigModifyDto;
@@ -41,6 +42,10 @@ public class DcpConfigService {
         
         Machine machine = machineRepository.findById(dto.getMachineId())
                     .orElseThrow(MachineNotFoundException::new);
+
+        if(dcpConfigRepository.existsByMachineId(machine.getId())){
+            throw new DuplicatedMachineDcpConfigException();
+        }
 
         DcpConfig dcpConfig = DcpConfig.builder()
                 .machine(machine)
