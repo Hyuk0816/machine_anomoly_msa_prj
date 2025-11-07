@@ -1,12 +1,10 @@
 package dev.study.portal.entity.machine;
 
 import dev.study.portal.entity.BaseEntity;
-import dev.study.portal.entity.machine.enums.Type;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.Comment;
