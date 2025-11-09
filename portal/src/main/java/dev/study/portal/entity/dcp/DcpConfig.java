@@ -3,6 +3,7 @@ package dev.study.portal.entity.dcp;
 import dev.study.portal.dto.dcp.DcpConfigResponseDto;
 import dev.study.portal.entity.BaseEntity;
 import dev.study.portal.entity.machine.Machine;
+import dev.study.portal.listener.dcp.DcpConfigEntityEventListener;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,6 +16,7 @@ import org.hibernate.annotations.Comment;
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
+@EntityListeners(DcpConfigEntityEventListener.class)
 @Table(name = "dcp_config")
 public class DcpConfig extends BaseEntity {
     @JoinColumn(name = "machine_id")
