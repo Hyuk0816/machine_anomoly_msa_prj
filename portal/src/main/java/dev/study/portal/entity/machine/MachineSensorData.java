@@ -12,7 +12,7 @@ import org.hibernate.annotations.Comment;
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "machine")
+@Table(name = "machine_sensor_data")
 @Comment("설비의 실시간 센서 데이터를 수집하여 영속화 하는 테이블")
 @SuperBuilder
 public class MachineSensorData extends BaseEntity {
