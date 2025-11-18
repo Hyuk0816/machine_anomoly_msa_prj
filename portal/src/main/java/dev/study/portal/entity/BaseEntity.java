@@ -31,7 +31,7 @@ public class BaseEntity {
 
 	@CreationTimestamp
 	@Column(name = "create_at", nullable = false, updatable = false)
-	protected LocalDateTime createAt;
+	protected LocalDateTime createdAt;
 
 	@Column(name = "update_by")
 	@LastModifiedBy
