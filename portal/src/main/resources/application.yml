@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: portal
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/machine_anomaly
+    username: admin
+    password: admin1234
+    driver-class-name: org.postgresql.Driver
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        show_sql: true
+    show-sql: true
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: sensor-consumer-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring:
+          json:
+            trusted:
+              packages: '*'
+
+# Kafka Topics
+kafka:
+  topic:
+    sensor-raw-data: sensor-raw-data
+
+# WebClient Configuration
+webclient:
+  max-memory-size: 10485760  # 10MB
+  connection-timeout: 5000    # 5초
+  read-timeout: 10000         # 10초
