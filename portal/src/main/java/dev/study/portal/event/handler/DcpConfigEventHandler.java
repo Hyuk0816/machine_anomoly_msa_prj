@@ -3,6 +3,7 @@ package dev.study.portal.event.handler;
 import dev.study.portal.event.dcp.DcpConfigCreatedEvent;
 import dev.study.portal.event.dcp.DcpConfigDeletedEvent;
 import dev.study.portal.event.dcp.DcpConfigModifyEvent;
+import dev.study.portal.scheduler.DcpConfigScheduler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class DcpConfigEventHandler {
-    private final DynamicSchedulerManager schedulerManager;
+    private final DcpConfigScheduler schedulerManager;
 
     @Async
     @EventListener
