@@ -3,7 +3,9 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/machine_anomoly_msa_prj.iml" filepath="$PROJECT_DIR$/.idea/machine_anomoly_msa_prj.iml" />
-      <module fileurl="file://$PROJECT_DIR$/portal/portal.iml" filepath="$PROJECT_DIR$/portal/portal.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/portal.iml" filepath="$PROJECT_DIR$/.idea/modules/portal.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/portal.main.iml" filepath="$PROJECT_DIR$/.idea/modules/portal.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/portal.test.iml" filepath="$PROJECT_DIR$/.idea/modules/portal.test.iml" />
     </modules>
   </component>
 </project>
