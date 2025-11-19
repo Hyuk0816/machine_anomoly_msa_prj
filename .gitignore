@@ -1,0 +1,16 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Docker volumes
+docker-compose.override.yml
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Logs
+*.log
+logs/
