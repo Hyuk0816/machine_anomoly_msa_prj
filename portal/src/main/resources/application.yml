@@ -41,6 +41,7 @@ spring:
 kafka:
   topic:
     sensor-raw-data: sensor-raw-data
+    anomaly-alerts: anomaly-alerts
 
 # WebClient Configuration
 webclient:
