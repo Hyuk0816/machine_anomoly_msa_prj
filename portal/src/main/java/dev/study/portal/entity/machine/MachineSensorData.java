@@ -5,6 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.Comment;
@@ -15,6 +17,7 @@ import org.hibernate.annotations.Comment;
 @Table(name = "machine_sensor_data")
 @Comment("설비의 실시간 센서 데이터를 수집하여 영속화 하는 테이블")
 @SuperBuilder
+@Getter
 public class MachineSensorData extends BaseEntity {
 
     @Column(name = "machine_id")
@@ -35,7 +38,4 @@ public class MachineSensorData extends BaseEntity {
 
     @Column(name = "tool_wear")
     private Integer toolWear;
-
-    @Column(name = "target")
-    private Integer target;
 }
