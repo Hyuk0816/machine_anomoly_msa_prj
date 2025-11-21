@@ -192,10 +192,10 @@ class SensorDataConsumer:
 
             # (선택적) 즉시 Kafka로도 발행
             # Debezium과 별개로 실시간 알림이 필요한 경우 아래 주석 해제
-            # self.alert_producer.send_anomaly_alert(
-            #     machine_id=machine_id,
-            #     alert_data=outbox_event.payload
-            # )
+            self.alert_producer.send_anomaly_alert(
+                machine_id=machine_id,
+                alert_data=outbox_event.payload
+            )
 
         except Exception as e:
             logger.error(f"이상 탐지 이벤트 저장 실패: {e}")

@@ -518,11 +518,82 @@ services:
   - ✅ FastAPI 엔드포인트
   - ✅ 메인 애플리케이션 및 문서화
 
+15. ✅ **Portal AnomalyHistory 이상 탐지 이력 관리 구현** (2025.11.20 완료)
+    - AnomalyHistory 엔티티 구현 (machine FK, detectedAt, anomalyProbability, sensorData JSONB)
+    - AnomalyHistoryRepository: JPA Repository
+    - DTO 클래스 구현:
+      - EventMessageSensorData (Kafka 이벤트 센서 데이터)
+      - Prediction (이상 탐지 결과)
+      - AnomalyAlertMessage (Kafka 메시지 전체 구조)
+      - AnomalyHistoryResponseDto (응답 DTO)
+    - AnomalyHistoryService:
+      - 기본 CRUD 메서드 (getAll, findByDetectedAtBetween)
+      - saveFromKafkaMessage(): Kafka 메시지 → DB 영속화
+      - Jackson ObjectMapper를 통한 JSON 직렬화/역직렬화
+    - AnomalyAlertListener:
+      - @KafkaListener로 anomaly-alerts 토픽 구독
+      - 실시간 이상 탐지 알림 수신 및 처리
+      - AnomalyHistoryService 호출하여 DB 저장
+    - 커스텀 예외 처리:
+      - MachineNotFoundException
+      - SensorDataJsonWriteException
+
+**아키텍처 흐름 완성**:
+```
+[AI Server] 이상 탐지 → Outbox 저장 → Kafka Producer
+    ↓
+Kafka Topic (anomaly-alerts)
+    ↓
+[Portal] AnomalyAlertListener → AnomalyHistoryService → AnomalyHistory 영속화
+```
+
+**기술적 특징**:
+- JSONB 컬럼을 활용한 센서 데이터 유연한 저장
+- ISO-8601 datetime 파싱
+- 이벤트 기반 비동기 처리 (@KafkaListener)
+- 정규화된 엔티티 설계 (machineType 필드 제거, Machine FK 활용)
+- DTO 명명 규칙 (EventMessageSensorData vs SensorDataDto 구분)
+
+16. ✅ **Portal 이벤트 기반 동적 데이터 수집 시스템 구현** (완료)
+    - DcpConfigScheduler (동적 스케줄러 매니저):
+      - @PostConstruct로 애플리케이션 시작 시 기존 DCP 설정 자동 등록
+      - ConcurrentHashMap 기반 스케줄러 생명주기 관리
+      - createScheduler/updateScheduler/removeScheduler 메서드
+      - TaskScheduler를 통한 주기적 데이터 수집
+    - ReactiveDataCollectorService (WebFlux 기반 데이터 수집):
+      - WebClient를 이용한 비동기 논블로킹 API 호출
+      - 재시도 메커니즘 (Retry.backoff, 3회, 지수 백오프)
+      - 타임아웃 설정 (10초)
+      - 응답 데이터 → SensorDataDto 매핑
+    - MachineSensorData 영속화:
+      - MachineSensorData 엔티티 (센서 데이터 6개 필드)
+      - MachineSensorDataService (단건/배치 저장)
+      - MachineSensorDataRepository
+    - KafkaProducerService:
+      - sensor-raw-data 토픽으로 센서 데이터 발행
+      - Reactive Kafka 통합 (KafkaSender)
+    - SensorDataListener:
+      - sensor-raw-data 토픽 구독
+      - MachineSensorDataService를 통한 DB 저장
+
+**데이터 수집 흐름**:
+```
+DcpConfig 생성 → DcpConfigScheduler 스케줄러 등록
+    ↓ (주기적)
+ReactiveDataCollectorService → 외부 API 호출 (WebClient)
+    ↓
+KafkaProducerService → sensor-raw-data 토픽
+    ↓
+SensorDataListener → MachineSensorData DB 저장
+```
+
+**기술적 특징**:
+- Spring WebFlux 비동기 논블로킹 아키텍처
+- TaskScheduler fixedDelay 방식 스케줄링
+- Reactive Streams 백프레셔 처리
+- 지수 백오프 재시도 전략
+- 배치 저장을 통한 DB 최적화
+
 **진행 예정**:
-- 📋 Portal Kafka Listener (anomaly-alerts 구독)
-- 📋 Portal FaultHistory 영속화
-- 📋 이벤트 기반 동적 스케줄러 시스템 (Portal)
-- 📋 WebFlux/WebClient 기반 비동기 데이터 수집 (Portal)
-- 📋 MachineSensorData 영속화 (Portal)
-- 📋 Debezium CDC 설정 및 통합
+- 📋 Debezium CDC 설정 및 통합 (선택적)
 - 📋 Docker Compose 통합 환경 구축
