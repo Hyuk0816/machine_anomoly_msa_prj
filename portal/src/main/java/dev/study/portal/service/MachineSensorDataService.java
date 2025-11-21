@@ -1,5 +1,6 @@
 package dev.study.portal.service;
 
+import dev.study.portal.dto.machine.MachineSensorDataResponseDto;
 import dev.study.portal.dto.sensor.SensorDataDto;
 import dev.study.portal.entity.machine.MachineSensorData;
 import dev.study.portal.repository.sensor.MachineSensorDataRepository;
@@ -8,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,7 +36,6 @@ public class MachineSensorDataService {
                 .rotationalSpeed(dto.getRotationalSpeed())
                 .torque(dto.getTorque())
                 .toolWear(dto.getToolWear())
-                .target(dto.getTarget())
                 .build();
 
         return sensorDataRepository.save(entity);
@@ -61,7 +62,6 @@ public class MachineSensorDataService {
                         .rotationalSpeed(dto.getRotationalSpeed())
                         .torque(dto.getTorque())
                         .toolWear(dto.getToolWear())
-                        .target(dto.getTarget())
                         .build())
                 .collect(Collectors.toList());
 
@@ -71,18 +71,13 @@ public class MachineSensorDataService {
     }
 
     /**
-     * 특정 설비의 센서 데이터 조회
-     */
-    @Transactional(readOnly = true)
-    public List<MachineSensorData> getSensorDataByMachine(Long machineId) {
-        return sensorDataRepository.findByMachineIdOrderByCreatedAtDesc(machineId);
-    }
-
-    /**
      * 특정 설비의 최근 센서 데이터 조회
      */
     @Transactional(readOnly = true)
-    public List<MachineSensorData> getRecentSensorData(Long machineId) {
-        return sensorDataRepository.findTop10ByMachineIdOrderByCreatedAtDesc(machineId);
+    public List<MachineSensorDataResponseDto> getSensorDataCreatedAtBetween(Long machineId, LocalDateTime startAt, LocalDateTime endAt) {
+        return sensorDataRepository.findByMachineIdAndCreatedAtBetween(machineId, startAt, endAt)
+                .stream()
+                .map(MachineSensorDataResponseDto::from)
+                .collect(Collectors.toList());
     }
 }
