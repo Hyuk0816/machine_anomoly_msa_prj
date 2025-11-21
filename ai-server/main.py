@@ -81,7 +81,6 @@ async def lifespan(app: FastAPI):
         try:
             from src.kafka.producer import get_alert_producer
             from src.cache.machine_cache import get_machine_cache
-            from src.db.repositories import get_outbox_repository
 
             get_alert_producer().close()
             get_machine_cache().close()
