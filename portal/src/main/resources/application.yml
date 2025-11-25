@@ -36,6 +36,11 @@ spring:
           json:
             trusted:
               packages: '*'
+            type:
+              mapping: 'anomalyAlert:dev.study.portal.dto.anomalyHistory.AnomalyAlertMessage'
+            value:
+              default:
+                type: 'dev.study.portal.dto.anomalyHistory.AnomalyAlertMessage'
 
 # Kafka Topics
 kafka:

@@ -5,6 +5,7 @@ Kafka로 들어오는 JSON 센서 데이터를 모델 입력 가능한 NumPy 배
 학습 시 사용된 특징 공학 파이프라인과 정확히 동일하게 처리해야 합니다.
 """
 import numpy as np
+import pandas as pd
 import joblib
 from pathlib import Path
 from typing import Dict, Any, Tuple
@@ -110,8 +111,11 @@ class SensorDataPreprocessor:
         # 6단계: NaN/Inf 검증
         self._validate_features(feature_array)
 
-        # 7단계: 저장된 스케일러로 스케일링 (절대 재학습 금지)
-        scaled_features = self.scaler.transform(feature_array)
+        # 7단계: DataFrame으로 변환 (feature names 포함)
+        feature_df = pd.DataFrame(feature_array, columns=self.feature_names)
+
+        # 8단계: 저장된 스케일러로 스케일링 (절대 재학습 금지)
+        scaled_features = self.scaler.transform(feature_df)
 
         logger.debug(f"전처리된 특징: {feature_dict}")
 

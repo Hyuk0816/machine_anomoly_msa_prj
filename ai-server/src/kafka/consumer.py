@@ -114,42 +114,64 @@ class SensorDataConsumer:
             logger.warning("machineId가 없는 메시지 수신")
             return
 
+        logger.info(
+            f"📥 [1/4] 센서 데이터 수신 - Machine ID: {machine_id}, "
+            f"Partition: {message.partition}, Offset: {message.offset}"
+        )
         logger.debug(
-            f"센서 데이터 수신: machine_id={machine_id}, "
-            f"partition={message.partition}, "
-            f"offset={message.offset}"
+            f"📊 센서 값: airTemp={sensor_data.get('airTemperature')}, "
+            f"processTemp={sensor_data.get('processTemperature')}, "
+            f"speed={sensor_data.get('rotationalSpeed')}, "
+            f"torque={sensor_data.get('torque')}, "
+            f"toolWear={sensor_data.get('toolWear')}"
         )
 
         # 2단계: 머신 타입 조회
         # cache.get_machine_type()는 캐시 미스 시 자동으로 Portal DB 조회
+        logger.info(f"🔍 [2/4] 머신 타입 조회 중 - Machine ID: {machine_id}")
         machine_type = self.cache.get_machine_type(machine_id)
 
         if machine_type is None:
             logger.warning(
-                f"머신 타입을 찾을 수 없음: machine_id={machine_id}. "
+                f"❌ 머신 타입을 찾을 수 없음: machine_id={machine_id}. "
                 f"Portal DB에 해당 머신이 존재하지 않습니다."
             )
             return
 
+        logger.info(f"✅ [2/4] 머신 타입 확인 완료 - Type: {machine_type}")
+
         # 3단계: 이상 탐지 예측
         try:
+            logger.info(
+                f"🤖 [3/4] 이상 탐지 예측 시작 - Machine ID: {machine_id}, Type: {machine_type}"
+            )
+
             prediction_result = self.predictor.predict(
                 sensor_data=sensor_data,
                 machine_type=machine_type,
                 return_probabilities=True
             )
 
+            anomaly_prob = prediction_result.get('anomaly_probability', 0)
+            normal_prob = prediction_result.get('normal_probability', 0)
+
+            logger.info(
+                f"✅ [3/4] 예측 완료 - Machine ID: {machine_id}, "
+                f"정상: {normal_prob:.2%}, 이상: {anomaly_prob:.2%}"
+            )
+
             # 4단계: 이상 감지 시 처리
             if prediction_result['is_anomaly']:
+                logger.info(f"⚠️ [4/4] 이상 감지됨 - 처리 시작")
                 self._handle_anomaly(machine_id, sensor_data, prediction_result)
             else:
-                logger.debug(
-                    f"정상 데이터: machine_id={machine_id}, "
-                    f"normal_prob={prediction_result.get('normal_probability', 0):.4f}"
+                logger.info(
+                    f"✅ [4/4] 정상 데이터 - Machine ID: {machine_id} "
+                    f"(정상 확률: {normal_prob:.2%})"
                 )
 
         except Exception as e:
-            logger.error(f"예측 처리 실패 (machine_id={machine_id}): {e}")
+            logger.error(f"❌ 예측 처리 실패 (machine_id={machine_id}): {e}")
 
     def _handle_anomaly(
         self,

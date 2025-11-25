@@ -89,8 +89,9 @@ class MachineTypeCache:
             with Session(self.engine) as session:
                 # Machine 테이블에서 type 컬럼 조회
                 # SQLAlchemy 2.0 스타일 쿼리 사용
+                # Portal DB의 Machine 테이블 PK는 'id' (machine_id가 아님!)
                 query = text(
-                    "SELECT type FROM machine WHERE machine_id = :machine_id"
+                    "SELECT type FROM machine WHERE id = :machine_id"
                 )
                 result = session.execute(
                     query,
@@ -99,8 +100,28 @@ class MachineTypeCache:
 
                 if result is not None:
                     machine_type = result[0]
-                    logger.info(f"DB 조회 성공: 머신 ID {machine_id} → {machine_type}")
-                    return machine_type
+
+                    # Portal DB의 타입을 AI 서버 형식으로 매핑
+                    type_mapping = {
+                        'LOW': 'L',
+                        'MEDIUM': 'M',
+                        'HIGH': 'H',
+                        'L': 'L',  # 이미 짧은 형식인 경우 그대로
+                        'M': 'M',
+                        'H': 'H'
+                    }
+
+                    mapped_type = type_mapping.get(machine_type)
+
+                    if mapped_type is None:
+                        logger.warning(
+                            f"알 수 없는 머신 타입: {machine_type} (머신 ID: {machine_id}). "
+                            f"유효한 타입: LOW/L, MEDIUM/M, HIGH/H"
+                        )
+                        return None
+
+                    logger.info(f"DB 조회 성공: 머신 ID {machine_id} → {machine_type} → {mapped_type}")
+                    return mapped_type
                 else:
                     logger.warning(f"머신 ID {machine_id}를 DB에서 찾을 수 없음")
                     return None
