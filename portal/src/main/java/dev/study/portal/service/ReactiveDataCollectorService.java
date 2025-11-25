@@ -64,7 +64,6 @@ public class ReactiveDataCollectorService {
                 .rotationalSpeed(getIntegerValue(responseData, "rotationalSpeed"))
                 .torque(getDoubleValue(responseData, "torque"))
                 .toolWear(getIntegerValue(responseData, "toolWear"))
-                .target(getIntegerValue(responseData, "target"))
                 .collectedAt(LocalDateTime.now())
                 .build();
     }
@@ -72,18 +71,42 @@ public class ReactiveDataCollectorService {
     private Double getDoubleValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value == null) return null;
+
         if (value instanceof Number) {
             return ((Number) value).doubleValue();
         }
+
+        // 문자열인 경우 파싱 시도
+        if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException e) {
+                log.warn("[DataCollector] Double 변환 실패 - key: {}, value: {}", key, value);
+                return null;
+            }
+        }
+
         return null;
     }
 
     private Integer getIntegerValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value == null) return null;
+
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
+
+        // 문자열인 경우 파싱 시도
+        if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException e) {
+                log.warn("[DataCollector] Integer 변환 실패 - key: {}, value: {}", key, value);
+                return null;
+            }
+        }
+
         return null;
     }
 }

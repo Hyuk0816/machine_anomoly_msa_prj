@@ -36,9 +36,6 @@ public class SensorDataDto {
     @Schema(description = "공구 마모도 (분)", example = "0", required = true)
     private Integer toolWear;
 
-    @Schema(description = "고장 여부 (0: 정상, 1: 고장)", example = "0", required = true)
-    private Integer target;
-
     @Schema(description = "수집 시각", example = "2025-11-18T10:30:00")
     private LocalDateTime collectedAt;
 }
