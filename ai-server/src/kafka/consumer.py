@@ -160,6 +160,26 @@ class SensorDataConsumer:
                 f"정상: {normal_prob:.2%}, 이상: {anomaly_prob:.2%}"
             )
 
+            # Feature Importance 로깅
+            if 'feature_importance' in prediction_result:
+                top_features = list(prediction_result['feature_importance'].items())[:3]
+                logger.info(
+                    f"📊 주요 특징 중요도: " +
+                    ", ".join([f"{name}({importance:.3f})" for name, importance in top_features])
+                )
+
+            # SHAP 설명 로깅 (이상 탐지 시)
+            if prediction_result['is_anomaly'] and 'shap_explanation' in prediction_result:
+                shap_exp = prediction_result['shap_explanation']
+                if shap_exp and 'top_features' in shap_exp:
+                    logger.info("🔍 이상 탐지 주요 원인:")
+                    for feat in shap_exp['top_features']:
+                        logger.info(
+                            f"  - {feat['feature']}: "
+                            f"SHAP값={feat['shap_value']:.4f} "
+                            f"({feat['contribution']})"
+                        )
+
             # 4단계: 이상 감지 시 처리
             if prediction_result['is_anomaly']:
                 logger.info(f"⚠️ [4/4] 이상 감지됨 - 처리 시작")

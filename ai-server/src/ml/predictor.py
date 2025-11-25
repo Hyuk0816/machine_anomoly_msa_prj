@@ -8,6 +8,7 @@ import logging
 
 from .model_loader import get_model_loader
 from ..preprocessing.feature_engineering import get_preprocessor
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,8 @@ class AnomalyPredictor:
         self,
         sensor_data: Dict[str, Any],
         machine_type: str,
-        return_probabilities: bool = False
+        return_probabilities: bool = False,
+        explain: bool = True
     ) -> Dict[str, Any]:
         """
         센서 데이터에 대한 이상 탐지 예측 수행
@@ -41,6 +43,7 @@ class AnomalyPredictor:
                         rotationalSpeed, torque, toolWear
             machine_type: 머신 타입 ('L', 'M', 'H')
             return_probabilities: True면 확률값도 반환
+            explain: True면 feature importance와 SHAP 설명 추가
 
         Returns:
             예측 결과 딕셔너리:
@@ -50,6 +53,8 @@ class AnomalyPredictor:
                 - features (dict): 공학적 특징 (디버깅용)
                 - normal_probability (float): 정상 확률 (옵션)
                 - anomaly_probability (float): 이상 확률 (옵션)
+                - feature_importance (dict): 전역 특징 중요도 (옵션)
+                - shap_explanation (dict): SHAP 기반 설명 (옵션)
 
         Raises:
             ValueError: 입력 데이터가 유효하지 않은 경우
@@ -62,29 +67,50 @@ class AnomalyPredictor:
                 machine_type
             )
 
-            # 2단계: 모델 예측
-            prediction = self.model_loader.predict(scaled_features)
+            # 2단계: 모델 예측 (확률 기반)
+            normal_prob, anomaly_prob = self.model_loader.predict_proba(scaled_features)
+
+            # 임계값 기반 이상 판정 (기본값 70%)
+            is_anomaly = anomaly_prob >= settings.ANOMALY_THRESHOLD
 
             # 기본 결과 구성
             result = {
-                'is_anomaly': bool(prediction == 1),
-                'prediction': int(prediction),
+                'is_anomaly': is_anomaly,
+                'prediction': int(1 if is_anomaly else 0),
                 'machine_type': machine_type,
-                'features': feature_dict
+                'features': feature_dict,
+                'threshold': settings.ANOMALY_THRESHOLD
             }
 
-            # 3단계: 확률값 계산 (옵션)
+            # 3단계: 확률값 추가
             if return_probabilities:
-                normal_prob, anomaly_prob = self.model_loader.predict_proba(scaled_features)
                 result['normal_probability'] = normal_prob
                 result['anomaly_probability'] = anomaly_prob
 
                 logger.debug(
                     f"예측 완료 - 이상: {result['is_anomaly']}, "
-                    f"이상 확률: {anomaly_prob:.4f}"
+                    f"이상 확률: {anomaly_prob:.4f}, 임계값: {settings.ANOMALY_THRESHOLD}"
                 )
             else:
                 logger.debug(f"예측 완료 - 이상: {result['is_anomaly']}")
+
+            # 4단계: 설명 추가 (옵션)
+            if explain:
+                # Feature Importance (전역)
+                feature_importance = self.model_loader.get_feature_importance()
+                if feature_importance:
+                    # 상위 5개만 포함
+                    top_5_importance = dict(list(feature_importance.items())[:5])
+                    result['feature_importance'] = top_5_importance
+
+                # SHAP 설명 (로컬 - 이 예측에 대한 설명)
+                shap_explanation = self.model_loader.explain_prediction(
+                    scaled_features,
+                    self.preprocessor.feature_names,
+                    top_k=3
+                )
+                if shap_explanation:
+                    result['shap_explanation'] = shap_explanation
 
             return result
 

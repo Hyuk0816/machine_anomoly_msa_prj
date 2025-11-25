@@ -6,12 +6,21 @@ ML 모델 로더 모듈
 """
 import joblib
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Dict, List, Tuple
 import logging
+import numpy as np
 
 from ..config import settings
 
 logger = logging.getLogger(__name__)
+
+# SHAP import with lazy loading (optional dependency)
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except ImportError:
+    SHAP_AVAILABLE = False
+    logger.warning("SHAP not installed. Feature explanation will be limited.")
 
 
 class ModelLoader:
@@ -26,7 +35,9 @@ class ModelLoader:
         """모델 로더 초기화"""
         self.model = None
         self.model_info = {}
+        self.shap_explainer = None
         self._load_model()
+        self._initialize_shap()
 
     def _load_model(self) -> None:
         """학습된 XGBoost 모델 로드"""
@@ -132,6 +143,115 @@ class ModelLoader:
             모델이 로드되었으면 True, 아니면 False
         """
         return self.model is not None
+
+    def _initialize_shap(self) -> None:
+        """SHAP explainer 초기화"""
+        if not SHAP_AVAILABLE:
+            logger.info("SHAP 라이브러리 미설치 - Feature explanation 비활성화")
+            return
+
+        if self.model is None:
+            logger.warning("모델이 로드되지 않아 SHAP explainer 초기화 실패")
+            return
+
+        try:
+            # XGBoost 모델용 TreeExplainer 생성
+            self.shap_explainer = shap.TreeExplainer(self.model)
+            logger.info("SHAP explainer 초기화 완료")
+        except Exception as e:
+            logger.error(f"SHAP explainer 초기화 실패: {e}")
+            self.shap_explainer = None
+
+    def get_feature_importance(self) -> Optional[Dict[str, float]]:
+        """
+        모델의 전역 feature importance 반환
+
+        Returns:
+            특징명: 중요도 딕셔너리, 또는 None
+        """
+        if self.model is None or not hasattr(self.model, 'feature_importances_'):
+            return None
+
+        try:
+            # XGBoost의 feature_importances_ 속성 사용
+            importances = self.model.feature_importances_
+
+            # feature_names 로드 (preprocessor에서 가져옴)
+            from ..preprocessing.feature_engineering import get_preprocessor
+            preprocessor = get_preprocessor()
+            feature_names = preprocessor.feature_names
+
+            if feature_names is None or len(feature_names) != len(importances):
+                logger.warning("Feature names 불일치")
+                return None
+
+            # 딕셔너리로 변환 및 정렬
+            importance_dict = dict(zip(feature_names, importances))
+            sorted_importance = dict(
+                sorted(importance_dict.items(), key=lambda x: x[1], reverse=True)
+            )
+
+            return sorted_importance
+
+        except Exception as e:
+            logger.error(f"Feature importance 계산 실패: {e}")
+            return None
+
+    def explain_prediction(
+        self,
+        features: Any,
+        feature_names: List[str],
+        top_k: int = 5
+    ) -> Optional[Dict[str, Any]]:
+        """
+        SHAP 값을 사용하여 개별 예측 설명
+
+        Args:
+            features: 전처리된 특징 배열
+            feature_names: 특징 이름 리스트
+            top_k: 상위 K개 중요 특징만 반환
+
+        Returns:
+            설명 딕셔너리 또는 None
+        """
+        if self.shap_explainer is None:
+            return None
+
+        try:
+            # SHAP 값 계산
+            shap_values = self.shap_explainer.shap_values(features)
+
+            # 2D array인 경우 첫 번째 샘플만 (배치가 아닌 경우)
+            if isinstance(shap_values, list):
+                # Binary classification: [class_0_shap, class_1_shap]
+                shap_values = shap_values[1]  # 이상 클래스(1)의 SHAP 값 사용
+
+            # 1D로 변환
+            if len(shap_values.shape) > 1:
+                shap_values = shap_values[0]
+
+            # 절대값 기준으로 정렬하여 상위 K개 추출
+            abs_shap = np.abs(shap_values)
+            top_indices = np.argsort(abs_shap)[::-1][:top_k]
+
+            # 결과 구성
+            explanations = []
+            for idx in top_indices:
+                explanations.append({
+                    'feature': feature_names[idx],
+                    'shap_value': float(shap_values[idx]),
+                    'contribution': 'increases anomaly' if shap_values[idx] > 0 else 'decreases anomaly',
+                    'magnitude': float(abs_shap[idx])
+                })
+
+            return {
+                'top_features': explanations,
+                'base_value': float(self.shap_explainer.expected_value) if hasattr(self.shap_explainer, 'expected_value') else None
+            }
+
+        except Exception as e:
+            logger.error(f"SHAP 설명 생성 실패: {e}")
+            return None
 
 
 # 모듈 수준 싱글톤 인스턴스 (지연 로딩)
