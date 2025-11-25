@@ -3,7 +3,7 @@
 
 Outbox 패턴을 위한 SQLAlchemy 모델
 """
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from sqlalchemy import String, DateTime, Boolean, Integer, Text, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -97,10 +97,18 @@ class Outbox(Base):
         Returns:
             Outbox 인스턴스
         """
+        # 한국 시간대 (UTC+9)
+        kst = timezone(timedelta(hours=9))
+        now_kst = datetime.now(kst)
+
         # 고유 aggregate_id 생성 (machine_id + timestamp)
-        aggregate_id = f"{machine_id}_{int(datetime.utcnow().timestamp() * 1000)}"
+        aggregate_id = f"{machine_id}_{int(now_kst.timestamp() * 1000)}"
 
         # 페이로드 구성
+        # detected_at을 한국 시간(KST)으로 포맷 (Java LocalDateTime 호환)
+        # timezone 정보를 제거한 naive datetime 문자열로 변환
+        detected_at_str = now_kst.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]  # 마이크로초를 밀리초로
+
         payload = {
             "machine_id": machine_id,
             "sensor_data": sensor_data,
@@ -109,13 +117,13 @@ class Outbox(Base):
                 "anomaly_probability": prediction_result.get("anomaly_probability"),
                 "machine_type": prediction_result["machine_type"]
             },
-            "detected_at": datetime.utcnow().isoformat()
+            "detected_at": detected_at_str
         }
 
         return cls(
             aggregate_id=aggregate_id,
             event_type="anomaly_detected",
             payload=payload,
-            created_at=datetime.utcnow(),
+            created_at=now_kst.replace(tzinfo=None),  # DB 저장도 한국 시간, timezone 정보 제거
             processed=False
         )
