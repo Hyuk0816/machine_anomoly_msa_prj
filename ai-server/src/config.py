@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str
 
+    # Anomaly Detection Threshold
+    ANOMALY_THRESHOLD: float = 0.3  # 70% 이상일 때 이상으로 판정
+
     class Config:
         env_file = ".env"
         case_sensitive = True
