@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -33,6 +35,7 @@ public class AnomalyHistory {
     private Double anomalyProbability;
 
     // 센서 데이터 스냅샷 (JSON)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "sensor_data", columnDefinition = "jsonb", nullable = false)
     private String sensorData;
 }
