@@ -62,6 +62,7 @@ export interface AnomalyHistoryResponseDto {
   detectedAt: string;
   anomalyProbability: number;
   eventMessageSensorData: EventMessageSensorData;
+  severity: Severity;
 }
 
 // Machine types enum
@@ -74,4 +75,5 @@ export const MACHINE_TYPES = [
   'WELDER',
 ] as const;
 
-export type MachineType = typeof MACHINE_TYPES[number];
+export const SEVERITY = ['WARNING','ALERT','CRITICAL'] as const;
+export type Severity = typeof SEVERITY[number];

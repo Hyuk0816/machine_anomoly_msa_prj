@@ -12,7 +12,7 @@ import {
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Button } from '../../components/ui/button';
-import { formatDateTime, formatProbability, getProbabilityColor } from '../../utils/formatters';
+import { formatDateTime, formatProbability, getProbabilityColor, getSeverityColor, getSeverityLabel } from '../../utils/formatters';
 import { Search, Loader2, AlertTriangle, X } from 'lucide-react';
 
 export function AnomalyList() {
@@ -133,6 +133,7 @@ export function AnomalyList() {
                       <TableHead className="text-slate-300 font-semibold">설비 ID</TableHead>
                       <TableHead className="text-slate-300 font-semibold">탐지 시각</TableHead>
                       <TableHead className="text-slate-300 font-semibold">확률</TableHead>
+                      <TableHead className="text-slate-300 font-semibold">심각도</TableHead>
                       <TableHead className="text-slate-300 font-semibold">공기 온도</TableHead>
                       <TableHead className="text-slate-300 font-semibold">공정 온도</TableHead>
                       <TableHead className="text-slate-300 font-semibold">회전 속도</TableHead>
@@ -152,6 +153,11 @@ export function AnomalyList() {
                         <TableCell>
                           <span className={getProbabilityColor(anomaly.anomalyProbability)}>
                             {formatProbability(anomaly.anomalyProbability)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={getSeverityColor(anomaly.severity)}>
+                            {getSeverityLabel(anomaly.severity)}
                           </span>
                         </TableCell>
                         <TableCell className="text-slate-300">
