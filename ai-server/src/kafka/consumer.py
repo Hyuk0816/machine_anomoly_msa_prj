@@ -182,7 +182,30 @@ class SensorDataConsumer:
 
             # 4단계: 이상 감지 시 처리
             if prediction_result['is_anomaly']:
-                logger.info(f"⚠️ [4/4] 이상 감지됨 - 처리 시작")
+                severity = prediction_result.get('severity', 'UNKNOWN')
+
+                # Severity에 따른 다른 로그 레벨
+                if severity == 'CRITICAL':
+                    logger.critical(
+                        f"[4/4] 위험 수준 이상 감지 - Machine ID: {machine_id}, "
+                        f"Severity: {severity}, 이상 확률: {anomaly_prob:.2%}"
+                    )
+                elif severity == 'ALERT':
+                    logger.warning(
+                        f"[4/4] 주의 수준 이상 감지 - Machine ID: {machine_id}, "
+                        f"Severity: {severity}, 이상 확률: {anomaly_prob:.2%}"
+                    )
+                elif severity == 'WARNING':
+                    logger.info(
+                        f"[4/4] 경고 수준 이상 감지 - Machine ID: {machine_id}, "
+                        f"Severity: {severity}, 이상 확률: {anomaly_prob:.2%}"
+                    )
+                else:
+                    logger.info(
+                        f"[4/4] 이상 감지됨 - Machine ID: {machine_id}, "
+                        f"Severity: {severity}"
+                    )
+
                 self._handle_anomaly(machine_id, sensor_data, prediction_result)
             else:
                 logger.info(

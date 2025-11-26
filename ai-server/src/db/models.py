@@ -115,7 +115,8 @@ class Outbox(Base):
             "prediction": {
                 "is_anomaly": prediction_result["is_anomaly"],
                 "anomaly_probability": prediction_result.get("anomaly_probability"),
-                "machine_type": prediction_result["machine_type"]
+                "machine_type": prediction_result["machine_type"],
+                "severity": prediction_result.get("severity", "UNKNOWN")
             },
             "detected_at": detected_at_str
         }

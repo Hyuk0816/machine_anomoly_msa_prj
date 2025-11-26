@@ -27,6 +27,29 @@ class AnomalyPredictor:
         self.model_loader = get_model_loader()
         logger.info("AnomalyPredictor 초기화 완료")
 
+    def _determine_severity(self, anomaly_prob: float) -> str:
+        """
+        이상 확률에 따른 심각도 판정
+
+        Args:
+            anomaly_prob: 이상 확률 (0.0 ~ 1.0)
+
+        Returns:
+            심각도 등급 ('CRITICAL', 'ALERT', 'WARNING', 'NORMAL')
+        """
+        # 임계값 기준 내림차순 (높은 것부터 체크)
+        thresholds = [
+            (settings.CRITICAL_THRESHOLD, 'CRITICAL'),
+            (settings.ALERT_THRESHOLD, 'ALERT'),
+            (settings.WARNING_THRESHOLD, 'WARNING')
+        ]
+
+        for threshold, severity in thresholds:
+            if anomaly_prob >= threshold:
+                return severity
+
+        return 'NORMAL'
+
     def predict(
         self,
         sensor_data: Dict[str, Any],
@@ -70,16 +93,20 @@ class AnomalyPredictor:
             # 2단계: 모델 예측 (확률 기반)
             normal_prob, anomaly_prob = self.model_loader.predict_proba(scaled_features)
 
-            # 임계값 기반 이상 판정 (기본값 70%)
-            is_anomaly = anomaly_prob >= settings.ANOMALY_THRESHOLD
+            # 심각도 판정
+            severity = self._determine_severity(anomaly_prob)
+
+            # 임계값 기반 이상 판정 (WARNING 이상이면 이상으로 간주)
+            is_anomaly = anomaly_prob >= settings.WARNING_THRESHOLD
 
             # 기본 결과 구성
             result = {
                 'is_anomaly': is_anomaly,
                 'prediction': int(1 if is_anomaly else 0),
+                'severity': severity,
                 'machine_type': machine_type,
                 'features': feature_dict,
-                'threshold': settings.ANOMALY_THRESHOLD
+                'threshold': settings.WARNING_THRESHOLD
             }
 
             # 3단계: 확률값 추가

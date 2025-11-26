@@ -49,8 +49,13 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str
 
-    # Anomaly Detection Threshold
-    ANOMALY_THRESHOLD: float = 0.3  # 70% 이상일 때 이상으로 판정
+    # Anomaly Detection Thresholds (다단계 알람)
+    WARNING_THRESHOLD: float = 0.3   # 30% - 경고 (WARNING)
+    ALERT_THRESHOLD: float = 0.5     # 50% - 주의 (ALERT)
+    CRITICAL_THRESHOLD: float = 0.7  # 70% - 위험 (CRITICAL)
+
+    # 기존 호환성을 위한 별칭 (WARNING 이상부터 이상으로 간주)
+    ANOMALY_THRESHOLD: float = 0.3
 
     class Config:
         env_file = ".env"
