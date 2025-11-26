@@ -19,4 +19,7 @@ public class Prediction {
 
     @JsonProperty("machine_type")
     private String machineType;
+
+    @JsonProperty("severity")
+    private String severity;
 }

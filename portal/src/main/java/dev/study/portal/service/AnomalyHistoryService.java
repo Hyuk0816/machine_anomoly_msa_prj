@@ -8,6 +8,7 @@ import dev.study.portal.dto.anomalyHistory.AnomalyAlertMessage;
 import dev.study.portal.dto.anomalyHistory.AnomalyHistoryResponseDto;
 import dev.study.portal.dto.anomalyHistory.EventMessageSensorData;
 import dev.study.portal.entity.anomalyHistory.AnomalyHistory;
+import dev.study.portal.entity.anomalyHistory.Severity;
 import dev.study.portal.entity.machine.Machine;
 import dev.study.portal.repository.anomalyHistory.AnomalyHistoryRepository;
 import dev.study.portal.repository.machine.MachineRepository;
@@ -80,6 +81,7 @@ public class AnomalyHistoryService{
                 .machine(machine)
                 .detectedAt(detectedAt)
                 .anomalyProbability(message.getPrediction().getAnomalyProbability())
+                .severity(Severity.valueOf(message.getPrediction().getSeverity()))
                 .sensorData(sensorDataJson)
                 .build();
 
