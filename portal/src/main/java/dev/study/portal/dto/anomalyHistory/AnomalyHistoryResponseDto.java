@@ -1,6 +1,7 @@
 package dev.study.portal.dto.anomalyHistory;
 
 import dev.study.portal.entity.anomalyHistory.AnomalyHistory;
+import dev.study.portal.entity.anomalyHistory.Severity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,6 +17,7 @@ public class AnomalyHistoryResponseDto {
     private String detectedAt;
     private Double anomalyProbability;
     private EventMessageSensorData eventMessageSensorData;
+    private Severity severity;
 
     public static AnomalyHistoryResponseDto from(AnomalyHistory anomalyHistory, EventMessageSensorData eventMessageSensorData) {
 
@@ -27,6 +29,7 @@ public class AnomalyHistoryResponseDto {
                 .detectedAt(anomalyHistory.getDetectedAt().toString())
                 .anomalyProbability(anomalyHistory.getAnomalyProbability())
                 .eventMessageSensorData(eventMessageSensorData)
+                .severity(anomalyHistory.getSeverity())
                 .build();
     }
 }

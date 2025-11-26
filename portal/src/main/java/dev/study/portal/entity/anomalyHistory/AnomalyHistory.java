@@ -38,4 +38,10 @@ public class AnomalyHistory {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "sensor_data", columnDefinition = "jsonb", nullable = false)
     private String sensorData;
+
+    //이상 확률로 보는 심각도
+    @Column(name = "severity", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Severity severity;
+
 }
