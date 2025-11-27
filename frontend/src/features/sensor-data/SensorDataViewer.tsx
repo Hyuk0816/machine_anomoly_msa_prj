@@ -58,14 +58,14 @@ export function SensorDataViewer() {
     if (!sensorData || sensorData.length === 0) return;
 
     const headers = [
-      'ID',
-      '설비 ID',
-      '공기 온도',
-      '공정 온도',
-      '회전 속도',
-      '토크',
-      '공구 마모',
-      '생성 일시',
+      'id',
+      'machineId',
+      'airTemperature',
+      'processTemperature',
+      'rotationalSpeed',
+      'torque',
+      'toolWear',
+      'createdAt',
     ];
 
     const csvContent = [
@@ -84,7 +84,7 @@ export function SensorDataViewer() {
       ),
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
