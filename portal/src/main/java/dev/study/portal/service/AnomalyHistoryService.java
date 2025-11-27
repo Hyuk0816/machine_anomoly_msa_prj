@@ -7,11 +7,13 @@ import dev.study.portal.common.exception.sensordata.SensorDataJsonWriteException
 import dev.study.portal.dto.anomalyHistory.AnomalyAlertMessage;
 import dev.study.portal.dto.anomalyHistory.AnomalyHistoryResponseDto;
 import dev.study.portal.dto.anomalyHistory.EventMessageSensorData;
+import dev.study.portal.dto.sse.AnomalySseDto;
 import dev.study.portal.entity.anomalyHistory.AnomalyHistory;
 import dev.study.portal.entity.anomalyHistory.Severity;
 import dev.study.portal.entity.machine.Machine;
 import dev.study.portal.repository.anomalyHistory.AnomalyHistoryRepository;
 import dev.study.portal.repository.machine.MachineRepository;
+import dev.study.portal.service.sse.SseEmitterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,7 @@ public class AnomalyHistoryService{
     private final AnomalyHistoryRepository anomalyHistoryRepository;
     private final MachineRepository machineRepository;
     private final ObjectMapper objectMapper;
+    private final SseEmitterService sseEmitterService;
 
     @Transactional(readOnly = true)
     public List<AnomalyHistoryResponseDto> getAll(){
@@ -86,5 +89,7 @@ public class AnomalyHistoryService{
                 .build();
 
         anomalyHistoryRepository.save(anomalyHistory);
+        AnomalySseDto SseMessage = AnomalySseDto.from(message, machine.getName());
+        sseEmitterService.broadcast(SseMessage);
     }
 }
