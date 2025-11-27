@@ -1,30 +1,34 @@
 version: '3.8'
 
 services:
+  # ========================
+  # Infrastructure Services
+  # ========================
+
   # PostgreSQL 17
   postgres:
     image: postgres:17-alpine
     container_name: machine_anomaly_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-machine_anomaly}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin1234}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
       TZ: Asia/Seoul
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - machine_anomaly_msa_network
+      - machine_anomaly_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-machine_anomaly}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Zookeeper (Kafka 의존성)
+  # Zookeeper (Kafka dependency)
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
     container_name: machine_anomaly_zookeeper
@@ -39,9 +43,9 @@ services:
       - zookeeper_data:/var/lib/zookeeper/data
       - zookeeper_logs:/var/lib/zookeeper/log
     networks:
-      - machine_anomaly_msa_network
+      - machine_anomaly_network
     healthcheck:
-      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -67,18 +71,18 @@ services:
       KAFKA_DELETE_TOPIC_ENABLE: "true"
       TZ: Asia/Seoul
     ports:
-      - "${KAFKA_PORT}:9092"
+      - "${KAFKA_PORT:-9092}:9092"
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
-      - machine_anomaly_msa_network
+      - machine_anomaly_network
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 10s
       timeout: 10s
       retries: 5
 
-  # Kafka UI (선택사항 - 모니터링용)
+  # Kafka UI (Monitoring)
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: machine_anomaly_kafka_ui
@@ -87,15 +91,98 @@ services:
       kafka:
         condition: service_healthy
     environment:
-      KAFKA_CLUSTERS_0_NAME: machine-anomoly-cluster
+      KAFKA_CLUSTERS_0_NAME: machine-anomaly-cluster
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
       DYNAMIC_CONFIG_ENABLED: "true"
       TZ: Asia/Seoul
     ports:
-      - "${KAFKA_UI_PORT}:8080"
+      - "${KAFKA_UI_PORT:-8090}:8080"
     networks:
-      - machine_anomaly_msa_network
+      - machine_anomaly_network
+
+  # ========================
+  # Application Services
+  # ========================
+
+  # Portal (Spring Boot)
+  portal:
+    build:
+      context: ./portal
+      dockerfile: Dockerfile
+    container_name: machine_anomaly_portal
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file:
+      - .env_portal
+    ports:
+      - "8080:8080"
+    networks:
+      - machine_anomaly_network
+
+  # AI Server - API (FastAPI)
+  ai-server-api:
+    build:
+      context: ./ai-server
+      dockerfile: Dockerfile
+    container_name: machine_anomaly_ai_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file:
+      - .env_ai_server
+    command: ["python", "main.py"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ai-model/models:/app/models:ro
+    networks:
+      - machine_anomaly_network
+
+  # AI Server - Consumer (Kafka Consumer)
+  ai-server-consumer:
+    build:
+      context: ./ai-server
+      dockerfile: Dockerfile
+    container_name: machine_anomaly_ai_consumer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file:
+      - .env_ai_server
+    command: ["python", "run_consumer.py"]
+    volumes:
+      - ./ai-model/models:/app/models:ro
+    networks:
+      - machine_anomaly_network
+
+  # Frontend (Vite Dev Server)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: machine_anomaly_frontend
+    restart: unless-stopped
+    depends_on:
+      - portal
+    env_file:
+      - .env_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src:ro
+    networks:
+      - machine_anomaly_network
 
 volumes:
   postgres_data:
@@ -108,5 +195,5 @@ volumes:
     driver: local
 
 networks:
-  machine_anomaly_msa_network:
-    external: true
+  machine_anomaly_network:
+    driver: bridge
