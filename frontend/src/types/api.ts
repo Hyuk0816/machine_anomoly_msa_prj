@@ -67,12 +67,9 @@ export interface AnomalyHistoryResponseDto {
 
 // Machine types enum
 export const MACHINE_TYPES = [
-  'CNC',
-  'LATHE',
-  'MILL',
-  'GRINDER',
-  'PRESS',
-  'WELDER',
+    'LOW',
+    'MEDIUM',
+    'HIGH',
 ] as const;
 
 export const SEVERITY = ['WARNING','ALERT','CRITICAL'] as const;
