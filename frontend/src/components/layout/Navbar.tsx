@@ -30,7 +30,7 @@ export function Navbar() {
                   스마트 팩토리
                 </span>
                 <span className="block text-xs text-blue-600 dark:text-blue-400 font-medium">
-                  예지보전 시스템
+                   실시간 이상탐지 시스템
                 </span>
               </div>
             </div>
