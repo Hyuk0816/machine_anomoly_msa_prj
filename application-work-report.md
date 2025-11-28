@@ -594,6 +594,268 @@ SensorDataListener → MachineSensorData DB 저장
 - 지수 백오프 재시도 전략
 - 배치 저장을 통한 DB 최적화
 
+### Phase 5: 프론트엔드 구현 (React + Vite)
+```
+✅ Frontend 구현 완료 - 2025.11.25
+```
+
+**구현 완료 사항**:
+
+17. ✅ **프론트엔드 프로젝트 초기 구현** (2025.11.25 완료)
+    ```
+    frontend/
+    ├── src/
+    │   ├── api/                     # API 클라이언트 레이어
+    │   │   ├── client.ts            # Axios 기반 HTTP 클라이언트
+    │   │   ├── machines.ts          # 설비 관리 API
+    │   │   ├── dcpConfig.ts         # DCP 설정 API
+    │   │   ├── sensorData.ts        # 센서 데이터 API
+    │   │   └── anomalies.ts         # 이상 탐지 API
+    │   ├── hooks/                   # React Query 기반 커스텀 훅
+    │   │   ├── useMachines.ts       # 설비 관리 훅
+    │   │   ├── useDcpConfigs.ts     # DCP 설정 훅
+    │   │   ├── useSensorData.ts     # 센서 데이터 훅
+    │   │   ├── useAnomalies.ts      # 이상 탐지 훅
+    │   │   └── useToast.ts          # 토스트 알림 훅
+    │   ├── components/
+    │   │   ├── ui/                  # shadcn/ui 컴포넌트
+    │   │   │   ├── button.tsx
+    │   │   │   ├── card.tsx
+    │   │   │   ├── dialog.tsx
+    │   │   │   ├── input.tsx
+    │   │   │   ├── label.tsx
+    │   │   │   ├── select.tsx
+    │   │   │   ├── table.tsx
+    │   │   │   ├── toast.tsx
+    │   │   │   └── toaster.tsx
+    │   │   └── layout/
+    │   │       ├── Layout.tsx
+    │   │       └── Navbar.tsx
+    │   ├── features/               # 기능별 컴포넌트
+    │   │   ├── machines/
+    │   │   │   ├── MachineList.tsx
+    │   │   │   ├── MachineCreateModal.tsx
+    │   │   │   ├── MachineEditModal.tsx
+    │   │   │   └── MachineDeleteDialog.tsx
+    │   │   ├── dcp-config/
+    │   │   │   ├── DcpConfigList.tsx
+    │   │   │   ├── DcpConfigCreateModal.tsx
+    │   │   │   ├── DcpConfigEditModal.tsx
+    │   │   │   └── DcpConfigDeleteDialog.tsx
+    │   │   ├── sensor-data/
+    │   │   │   ├── SensorDataViewer.tsx
+    │   │   │   ├── SensorDataTable.tsx
+    │   │   │   └── SensorChart.tsx
+    │   │   ├── anomalies/
+    │   │   │   └── AnomalyList.tsx
+    │   │   └── dashboard/
+    │   │       └── Dashboard.tsx
+    │   ├── contexts/
+    │   │   └── ThemeContext.tsx     # 다크모드/라이트모드 컨텍스트
+    │   ├── utils/
+    │   │   ├── cn.ts               # 클래스 병합 유틸
+    │   │   └── formatters.ts       # 포맷팅 유틸
+    │   ├── types/
+    │   │   └── api.ts              # API 타입 정의
+    │   ├── App.tsx
+    │   └── main.tsx
+    ```
+
+**기술 스택**:
+- React 18 + TypeScript
+- Vite 빌드 도구
+- React Query (TanStack Query): 서버 상태 관리
+- Axios: HTTP 클라이언트
+- shadcn/ui: 컴포넌트 라이브러리
+- Tailwind CSS: 스타일링
+- Recharts: 차트 라이브러리
+
+**주요 기능**:
+- 설비(Machine) CRUD 관리 화면
+- DCP 설정 CRUD 관리 화면
+- 센서 데이터 시각화 (차트 + 테이블)
+- 이상 탐지 이력 조회 화면
+- 대시보드 화면
+
+18. ✅ **프론트엔드 기능 개선** (2025.11.27 완료)
+    - **라이트모드/다크모드 기능**: ThemeContext 기반 테마 전환
+    - **센서데이터 테이블 보기**: SensorDataTable 컴포넌트 추가
+    - **페이징 및 날짜 조건**: 기본 조건 적용으로 UX 개선
+    - **CSV 내보내기**: 영어 헤더로 CSV 내보내기 기능
+    - **다크모드 그래프 버그 수정**: 뒷 배경이 안 보이는 버그 해결
+    - **심각도 필드 추가**: 이상 조회 화면에 심각도(Severity) 표시
+    - **ENUM 타입 일치**: 프론트엔드 타입을 백엔드 ENUM과 일치하도록 수정
+    - **모듈 이름 변경**: '실시간 이상탐지 시스템'으로 명칭 통일
+
+### Phase 6: SSE(Server-Sent Events) 실시간 알림 시스템
+```
+✅ SSE 실시간 알림 구현 완료 - 2025.11.27
+```
+
+**구현 완료 사항**:
+
+19. ✅ **백엔드 SSE 구현** (2025.11.27 완료)
+    - **SseController**: SSE 연결 엔드포인트 (`/api/sse/subscribe`)
+      ```java
+      @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+      public SseEmitter subscribe(@RequestParam(required = false) String clientId)
+      ```
+    - **SseEmitterService**: SSE 연결 관리 및 브로드캐스트
+      - 클라이언트별 SseEmitter 관리 (HashMap)
+      - 60분 타임아웃 설정
+      - `broadcast()`: 전체 클라이언트에게 이상 알림 전송
+      - `subscribe()`: 클라이언트 연결 등록
+      - 연결 완료/타임아웃/에러 시 자동 정리
+    - **AnomalySseDto**: SSE 메시지 DTO
+    - **AnomalyHistoryService 연동**: 이상 탐지 시 SSE 브로드캐스트
+
+20. ✅ **프론트엔드 SSE 구현** (2025.11.27 완료)
+    - **useAnomalySse 훅**: EventSource 기반 SSE 구독
+      - 자동 재연결 (5초 후)
+      - `anomaly-alert` 이벤트 리스너
+      - 심각도별 토스트 알림 (CRITICAL → destructive variant)
+      - 컴포넌트 언마운트 시 연결 정리
+
+**SSE 아키텍처 흐름**:
+```
+[AI Server] 이상 탐지 → Kafka(anomaly-alerts)
+    ↓
+[Portal] AnomalyAlertListener → AnomalyHistoryService.save()
+    ↓
+SseEmitterService.broadcast() → SSE 이벤트 전송
+    ↓
+[Frontend] useAnomalySse → EventSource → Toast 알림 표시
+```
+
+**기술적 특징**:
+- Server-Sent Events (단방향 실시간 통신)
+- 자동 재연결 메커니즘
+- 심각도별 알림 스타일 분기 (WARNING, ALERT, CRITICAL)
+- 한국 시간 포맷 표시
+
+### Phase 7: 단계별 위험도 및 SHAP 지원
+```
+✅ 위험도 단계화 및 SHAP 기능 추가 완료 - 2025.11.26~27
+```
+
+**구현 완료 사항**:
+
+21. ✅ **SHAP 기반 파라미터 기여도 설명** (2025.11.26 완료)
+    - AI Server에 SHAP(SHapley Additive exPlanations) 지원 추가
+    - 이상 탐지 시 파라미터별 기여도 설명 제공
+    - 예측 결과의 해석 가능성(Interpretability) 강화
+
+22. ✅ **단계별 심각도(Severity) 기능** (2025.11.27 완료)
+    - 이상 확률 기반 심각도 분류:
+      - WARNING: 낮은 확률
+      - ALERT: 중간 확률
+      - CRITICAL: 높은 확률
+    - Kafka 메시지에 심각도 필드 추가
+    - AnomalyHistory 엔티티에 severity 필드 추가
+    - 프론트엔드 이상 조회 화면에 심각도 표시
+
+### Phase 8: Docker 인프라 구성
+```
+✅ Docker Compose 통합 환경 구축 완료 - 2025.11.27
+```
+
+**구현 완료 사항**:
+
+23. ✅ **모듈별 Dockerfile 구성** (2025.11.27 완료)
+    - **portal/Dockerfile**: Spring Boot 멀티 스테이지 빌드
+      - Build Stage: gradle:8.5-jdk17 기반 빌드
+      - Runtime Stage: eclipse-temurin:17-jre 기반 실행
+      - 비루트 사용자 실행 (spring:spring)
+      - Health Check: `/actuator/health`
+    - **ai-server/Dockerfile**: Python FastAPI 컨테이너
+      - python:3.11-slim 베이스 이미지
+      - 시스템 의존성 (build-essential, libpq-dev)
+      - 비루트 사용자 실행 (appuser)
+    - **frontend/Dockerfile**: React Vite 개발 서버
+      - node:20-alpine 베이스 이미지
+      - Hot Reload 지원 (`--host 0.0.0.0`)
+
+24. ✅ **docker-compose.yml 통합 구성** (2025.11.27 완료)
+    ```yaml
+    services:
+      # Infrastructure Services
+      postgres:        # PostgreSQL 17 (alpine)
+      zookeeper:       # Confluent CP Zookeeper 7.6.0
+      kafka:           # Confluent CP Kafka 7.6.0
+      kafka-ui:        # Kafka UI 모니터링
+
+      # Application Services
+      portal:          # Spring Boot (8080)
+      ai-server-api:   # FastAPI API 서버 (8000)
+      ai-server-consumer: # Kafka Consumer
+      frontend:        # Vite Dev Server (5173)
+    ```
+
+**환경 변수 파일**:
+- `.env_portal`: Portal 환경 변수
+- `.env_ai_server`: AI Server 환경 변수
+- `.env_frontend`: Frontend 환경 변수
+
+**네트워크 구성**:
+- `machine_anomaly_network`: 모든 서비스 간 통신을 위한 Bridge 네트워크
+
+**볼륨 구성**:
+- `postgres_data`: PostgreSQL 데이터 영속화
+- `zookeeper_data`, `zookeeper_logs`: Zookeeper 데이터
+- `kafka_data`: Kafka 데이터 영속화
+
+**서비스 의존성 관리**:
+- Health Check 기반 의존성 (`condition: service_healthy`)
+- PostgreSQL, Kafka 준비 완료 후 애플리케이션 시작
+
+**기술적 특징**:
+- 멀티 스테이지 빌드로 이미지 크기 최적화
+- 비루트 사용자 보안 강화
+- Health Check로 서비스 상태 모니터링
+- 환경 변수 분리로 환경별 설정 관리
+
+---
+
+**프로젝트 상태**: 🚀 Phase 8 완료 (Docker 인프라 구성)
+**최종 업데이트**: 2025.11.28
+**완료 사항**:
+- ✅ Portal API 프로젝트 구조 설정
+- ✅ Machine 설비 관리 CRUD API 구현
+- ✅ 예외 처리 체계 구축
+- ✅ 단위 테스트 작성 (MachineServiceTest - 11개)
+- ✅ DcpConfig CRUD API 구현 (DcpConfigServiceTest - 14개)
+- ✅ AI 모델 개발 및 학습 (XGBoost, Accuracy 98%)
+- ✅ AI Server 디렉토리 구조화
+- ✅ 설정 관리 시스템 구현
+- ✅ AI Server 핵심 컴포넌트 구현 (2025.11.19)
+  - ✅ SensorDataPreprocessor (특징 공학)
+  - ✅ ModelLoader (ML 모델 로딩)
+  - ✅ AnomalyPredictor (예측 파이프라인)
+  - ✅ MachineTypeCache (PostgreSQL + TTL)
+- ✅ AI Server 완전 구현 완료 (2025.11.19)
+  - ✅ Kafka Consumer/Producer
+  - ✅ Outbox 패턴 및 DB 모델
+  - ✅ FastAPI 엔드포인트
+  - ✅ 메인 애플리케이션 및 문서화
+- ✅ Portal AnomalyHistory 영속화 (2025.11.20)
+- ✅ 프론트엔드 구현 완료 (2025.11.25)
+  - ✅ React + Vite + TypeScript 기반
+  - ✅ 설비/DCP 설정/센서 데이터/이상 탐지 화면
+  - ✅ shadcn/ui + Tailwind CSS 스타일링
+- ✅ SHAP 파라미터 기여도 설명 추가 (2025.11.26)
+- ✅ 프론트엔드 기능 개선 (2025.11.27)
+  - ✅ 라이트모드/다크모드 지원
+  - ✅ 센서데이터 테이블 뷰
+  - ✅ 페이징 및 날짜 조건
+  - ✅ CSV 내보내기
+- ✅ 단계별 심각도 기능 (2025.11.27)
+- ✅ SSE 실시간 알림 시스템 (2025.11.27)
+- ✅ Docker 인프라 구성 (2025.11.27)
+  - ✅ 모듈별 Dockerfile
+  - ✅ docker-compose.yml 통합 구성
+  - ✅ 환경 변수 분리
+
 **진행 예정**:
 - 📋 Debezium CDC 설정 및 통합 (선택적)
-- 📋 Docker Compose 통합 환경 구축
+- 📋 프로덕션 배포 환경 구성
+- 📋 모니터링 및 로깅 시스템 구축
