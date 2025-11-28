@@ -2,6 +2,8 @@
 
 실시간 스마트 팩토리 예지보전 마이크로서비스 아키텍처(MSA) 시스템
 
+<img width="1381" height="946" alt="image" src="https://github.com/user-attachments/assets/e0f0a031-6b74-46dc-9d44-f45ccd48ffc7" />
+
 ## 프로젝트 개요
 
 제조 환경의 설비(Machine)에서 발생하는 센서 데이터를 실시간으로 수집하고, XGBoost 기반 머신러닝 모델을 활용하여 이상 징후를 탐지하는 시스템입니다. 이상 탐지 시 SSE(Server-Sent Events)를 통해 클라이언트에게 실시간 알림을 전송합니다.
