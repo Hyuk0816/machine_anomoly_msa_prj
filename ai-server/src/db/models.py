@@ -15,6 +15,102 @@ class Base(DeclarativeBase):
     pass
 
 
+class AnomalyHistory(Base):
+    """
+    이상 탐지 이력 테이블
+
+    AI Server에서 탐지한 모든 이상 징후를 영속화합니다.
+    sensor_data는 이상 탐지 시점의 센서 데이터를 JSON으로 저장합니다.
+    """
+    __tablename__ = "anomaly_history"
+
+    # 기본키
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # 머신 ID (Portal DB의 Machine 참조)
+    machine_id: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        index=True,
+        comment="Machine ID from Portal DB"
+    )
+
+    # 이상 탐지 시각
+    detected_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        index=True,
+        comment="Anomaly detection timestamp (KST)"
+    )
+
+    # 이상 확률
+    anomaly_probability: Mapped[float] = mapped_column(
+        nullable=False,
+        comment="Anomaly probability from XGBoost model (0.0 ~ 1.0)"
+    )
+
+    # 센서 데이터 (JSON)
+    sensor_data: Mapped[dict] = mapped_column(
+        JSON,
+        nullable=False,
+        comment="Sensor data at detection time (airTemperature, processTemperature, rotationalSpeed, torque, toolWear)"
+    )
+
+    # 심각도 수준
+    severity: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        index=True,
+        comment="Severity level: WARNING, ALERT, CRITICAL"
+    )
+
+    # 생성 시각 (레코드 생성 시각)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        comment="Record creation timestamp (UTC)"
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"AnomalyHistory(id={self.id}, "
+            f"machine_id={self.machine_id}, "
+            f"severity='{self.severity}', "
+            f"anomaly_probability={self.anomaly_probability:.4f}, "
+            f"detected_at={self.detected_at})"
+        )
+
+    @classmethod
+    def create_from_prediction(
+        cls,
+        machine_id: int,
+        sensor_data: dict,
+        prediction_result: dict,
+        detected_at: datetime
+    ) -> "AnomalyHistory":
+        """
+        예측 결과로부터 AnomalyHistory 인스턴스 생성
+
+        Args:
+            machine_id: 머신 ID
+            sensor_data: 센서 데이터
+            prediction_result: 예측 결과 (is_anomaly, anomaly_probability, severity 포함)
+            detected_at: 이상 탐지 시각
+
+        Returns:
+            AnomalyHistory 인스턴스
+        """
+        return cls(
+            machine_id=machine_id,
+            detected_at=detected_at,
+            anomaly_probability=prediction_result.get("anomaly_probability", 0.0),
+            sensor_data=sensor_data,
+            severity=prediction_result.get("severity", "UNKNOWN"),
+            created_at=datetime.utcnow()
+        )
+
+
 class Outbox(Base):
     """
     Outbox 패턴 테이블

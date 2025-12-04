@@ -8,8 +8,9 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 import logging
 
-from .models import Base, Outbox
+from .models import Base, Outbox, AnomalyHistory
 from ..config import settings
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -173,18 +174,213 @@ class OutboxRepository:
         logger.info("OutboxRepository DB 연결 종료")
 
 
+class AnomalyHistoryRepository:
+    """
+    AnomalyHistory 저장소
+
+    AI Server에서 탐지한 이상 징후를 영속화합니다.
+    """
+
+    def __init__(self):
+        """AI Server DB 엔진 및 세션 팩토리 초기화"""
+        self.engine = create_engine(
+            settings.ai_db_url,
+            pool_pre_ping=True,
+            pool_size=5,
+            max_overflow=10,
+            echo=False
+        )
+
+        self.SessionLocal = sessionmaker(
+            bind=self.engine,
+            autocommit=False,
+            autoflush=False
+        )
+
+        logger.info(f"AnomalyHistoryRepository 초기화 완료: {settings.ai_db_url}")
+
+    def create_tables(self) -> None:
+        """
+        데이터베이스 테이블 생성 (개발용)
+
+        운영 환경에서는 Alembic 마이그레이션을 사용해야 합니다.
+        """
+        Base.metadata.create_all(bind=self.engine)
+        logger.info("AnomalyHistory 테이블 생성 완료")
+
+    def save_anomaly(self, anomaly: AnomalyHistory) -> AnomalyHistory:
+        """
+        AnomalyHistory 저장
+
+        Args:
+            anomaly: 저장할 AnomalyHistory 인스턴스
+
+        Returns:
+            저장된 AnomalyHistory 인스턴스 (ID 포함)
+
+        Raises:
+            RuntimeError: DB 저장 실패 시
+        """
+        try:
+            with self.SessionLocal() as session:
+                session.add(anomaly)
+                session.commit()
+                session.refresh(anomaly)
+
+                logger.info(
+                    f"AnomalyHistory 저장 완료: "
+                    f"ID={anomaly.id}, "
+                    f"machine_id={anomaly.machine_id}, "
+                    f"severity={anomaly.severity}"
+                )
+
+                return anomaly
+
+        except Exception as e:
+            logger.error(f"AnomalyHistory 저장 실패: {e}")
+            raise RuntimeError(f"AnomalyHistory 저장 실패: {e}")
+
+    def get_anomalies_by_machine(
+        self,
+        machine_id: int,
+        limit: int = 100
+    ) -> List[AnomalyHistory]:
+        """
+        특정 머신의 이상 탐지 이력 조회
+
+        Args:
+            machine_id: 머신 ID
+            limit: 최대 조회 개수
+
+        Returns:
+            AnomalyHistory 리스트
+        """
+        try:
+            with self.SessionLocal() as session:
+                stmt = (
+                    select(AnomalyHistory)
+                    .where(AnomalyHistory.machine_id == machine_id)
+                    .order_by(AnomalyHistory.detected_at.desc())
+                    .limit(limit)
+                )
+
+                anomalies = session.scalars(stmt).all()
+                logger.debug(f"Machine {machine_id}: {len(anomalies)}개 이상 탐지 이력 조회")
+                return list(anomalies)
+
+        except Exception as e:
+            logger.error(f"이상 탐지 이력 조회 실패: {e}")
+            return []
+
+    def get_anomalies_by_period(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        machine_id: Optional[int] = None,
+        severity: Optional[str] = None,
+        limit: int = 1000
+    ) -> List[AnomalyHistory]:
+        """
+        기간별 이상 탐지 이력 조회
+
+        Args:
+            start_date: 시작 일시
+            end_date: 종료 일시
+            machine_id: 머신 ID (선택)
+            severity: 심각도 필터 (선택)
+            limit: 최대 조회 개수
+
+        Returns:
+            AnomalyHistory 리스트
+        """
+        try:
+            with self.SessionLocal() as session:
+                stmt = (
+                    select(AnomalyHistory)
+                    .where(AnomalyHistory.detected_at >= start_date)
+                    .where(AnomalyHistory.detected_at <= end_date)
+                )
+
+                if machine_id is not None:
+                    stmt = stmt.where(AnomalyHistory.machine_id == machine_id)
+
+                if severity is not None:
+                    stmt = stmt.where(AnomalyHistory.severity == severity)
+
+                stmt = stmt.order_by(AnomalyHistory.detected_at.desc()).limit(limit)
+
+                anomalies = session.scalars(stmt).all()
+                logger.debug(f"기간별 조회: {len(anomalies)}개 이상 탐지 이력")
+                return list(anomalies)
+
+        except Exception as e:
+            logger.error(f"기간별 이상 탐지 이력 조회 실패: {e}")
+            return []
+
+    def get_recent_anomalies(
+        self,
+        limit: int = 100,
+        severity: Optional[str] = None
+    ) -> List[AnomalyHistory]:
+        """
+        최근 이상 탐지 이력 조회
+
+        Args:
+            limit: 최대 조회 개수
+            severity: 심각도 필터 (선택)
+
+        Returns:
+            AnomalyHistory 리스트
+        """
+        try:
+            with self.SessionLocal() as session:
+                stmt = select(AnomalyHistory)
+
+                if severity is not None:
+                    stmt = stmt.where(AnomalyHistory.severity == severity)
+
+                stmt = stmt.order_by(AnomalyHistory.detected_at.desc()).limit(limit)
+
+                anomalies = session.scalars(stmt).all()
+                logger.debug(f"최근 {len(anomalies)}개 이상 탐지 이력 조회")
+                return list(anomalies)
+
+        except Exception as e:
+            logger.error(f"최근 이상 탐지 이력 조회 실패: {e}")
+            return []
+
+    def close(self) -> None:
+        """DB 엔진 종료"""
+        self.engine.dispose()
+        logger.info("AnomalyHistoryRepository DB 연결 종료")
+
+
 # 모듈 수준 싱글톤 인스턴스 (지연 로딩)
-_repository_instance: Optional[OutboxRepository] = None
+_outbox_repository_instance: Optional[OutboxRepository] = None
+_anomaly_repository_instance: Optional[AnomalyHistoryRepository] = None
 
 
 def get_outbox_repository() -> OutboxRepository:
     """
-    싱글톤 레포지토리 인스턴스 반환
+    싱글톤 OutboxRepository 인스턴스 반환
 
     Returns:
         초기화된 OutboxRepository 인스턴스
     """
-    global _repository_instance
-    if _repository_instance is None:
-        _repository_instance = OutboxRepository()
-    return _repository_instance
+    global _outbox_repository_instance
+    if _outbox_repository_instance is None:
+        _outbox_repository_instance = OutboxRepository()
+    return _outbox_repository_instance
+
+
+def get_anomaly_repository() -> AnomalyHistoryRepository:
+    """
+    싱글톤 AnomalyHistoryRepository 인스턴스 반환
+
+    Returns:
+        초기화된 AnomalyHistoryRepository 인스턴스
+    """
+    global _anomaly_repository_instance
+    if _anomaly_repository_instance is None:
+        _anomaly_repository_instance = AnomalyHistoryRepository()
+    return _anomaly_repository_instance
