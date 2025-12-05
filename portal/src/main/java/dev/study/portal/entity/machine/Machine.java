@@ -3,6 +3,7 @@ package dev.study.portal.entity.machine;
 import dev.study.portal.dto.machine.MachineResponseDto;
 import dev.study.portal.entity.BaseEntity;
 import dev.study.portal.entity.machine.enums.Type;
+import dev.study.portal.listener.machine.MachineEntityEventListener;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -14,6 +15,7 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @Getter
 @SuperBuilder
+@EntityListeners(MachineEntityEventListener.class)
 @Table(name = "machine")
 public class Machine extends BaseEntity {
     @Column(name = "name")
