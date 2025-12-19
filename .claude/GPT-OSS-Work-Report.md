@@ -241,7 +241,13 @@ AI Server (LLM Tool) -> Redis (설비 조회)
 - **산출물**: `ai-server/src/cache/redis_client.py`
 - **의존성**: Step 0-4
 - **Context7 참조**: redis-py
-- **변경 이력**: -
+- **변경 이력**:
+  - 2025-12-20 01:39: Redis Client 구현 완료
+    - `requirements.txt`에 `redis>=5.0.0` 추가
+    - `config.py`에 Redis 설정 추가 (REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_MAX_CONNECTIONS 등)
+    - `redis_client.py` 생성: MachineIdCache 클래스, get_machine_id() 함수
+    - `cache/__init__.py` 업데이트
+    - `.env_ai_server`에 Redis 환경 변수 추가
 
 #### Step 0-8: Frontend API 엔드포인트 변경
 
@@ -251,7 +257,12 @@ AI Server (LLM Tool) -> Redis (설비 조회)
 - **산출물**: 수정된 `frontend/src/api/anomalies.ts`
 - **의존성**: Step 0-3
 - **Context7 참조**: Axios
-- **변경 이력**: -
+- **변경 이력**:
+  - 2025-12-20 01:42: Frontend API 엔드포인트 변경 완료
+    - `aiClient.ts` 생성: AI Server 전용 Axios 클라이언트
+    - `anomalies.ts` 수정: apiClient -> aiClient로 변경, 엔드포인트 경로 수정
+    - `vite.config.ts` 수정: `/ai-api` 프록시 추가 (개발 환경용)
+    - `.env_frontend` 수정: VITE_AI_SERVER_URL 환경 변수 추가
 
 #### Step 0-9: Docker Compose 업데이트
 
@@ -261,7 +272,11 @@ AI Server (LLM Tool) -> Redis (설비 조회)
 - **산출물**: 수정된 `docker-compose.yml`, `.env` 파일
 - **의존성**: Step 0-4, Step 0-7
 - **Context7 참조**: Docker Compose
-- **변경 이력**: -
+- **변경 이력**:
+  - 2025-12-20 01:46: Docker Compose 업데이트 완료
+    - `docker-compose.yml`: Redis 서비스 추가 (redis:7-alpine, healthcheck 포함)
+    - `docker-compose.yml`: Portal, AI Server API, AI Server Consumer에 Redis 의존성 추가
+    - `docker-compose.yml`: redis_data 볼륨 추가
 
 ---
 
@@ -508,16 +523,16 @@ AI Server (LLM Tool) -> Redis (설비 조회)
 ## 5. 작업 진행 현황
 
 | Phase | Step | 작업 내용 | 상태 | 시작 시간 | 완료 시간 |
-|-------|------|-----------|------|-----------|-----------|
+|-------|------|-----------|----|-----------|-----------|
 | 0 | 0-1 | AI Server DB에 AnomalyHistory 테이블 생성 | 완료 | 2025-12-04 23:00 | 2025-12-04 23:50 |
 | 0 | 0-2 | AI Server Consumer 저장 로직 추가 | 완료 | 2025-12-04 23:00 | 2025-12-04 23:50 |
 | 0 | 0-3 | AI Server AnomalyHistory API 추가 | 완료 | 2025-12-04 23:00 | 2025-12-04 23:50 |
 | 0 | 0-4 | Portal Redis 연동 추가 | 완료 | 2025-12-05 16:02 | 2025-12-05 16:02 |
-| 0 | 0-5 | Portal AnomalyAlertListener 변경 | 대기 | - | - |
-| 0 | 0-6 | Portal AnomalyHistory 코드 정리 | 대기 | - | - |
-| 0 | 0-7 | AI Server Redis Client 추가 | 대기 | - | - |
-| 0 | 0-8 | Frontend API 엔드포인트 변경 | 대기 | - | - |
-| 0 | 0-9 | Docker Compose 업데이트 | 대기 | - | - |
+| 0 | 0-5 | Portal AnomalyAlertListener 변경 | 완료 | - | - |
+| 0 | 0-6 | Portal AnomalyHistory 코드 정리 | 완료 | - | - |
+| 0 | 0-7 | AI Server Redis Client 추가 | 완료 | 2025-12-20 01:30 | 2025-12-20 01:39 |
+| 0 | 0-8 | Frontend API 엔드포인트 변경 | 완료 | 2025-12-20 01:40 | 2025-12-20 01:42 |
+| 0 | 0-9 | Docker Compose 업데이트 | 완료 | 2025-12-20 01:43 | 2025-12-20 01:46 |
 | 1 | 1-1 | LLM Docker 환경 구성 | 대기 | - | - |
 | 1 | 1-2 | GPT-OSS 20B 모델 다운로드 | 대기 | - | - |
 | 1 | 1-3 | VRAM 점유율 테스트 | 대기 | - | - |
@@ -539,4 +554,4 @@ AI Server (LLM Tool) -> Redis (설비 조회)
 ---
 
 *문서 작성일: 2025-12-04*
-*최종 수정일: 2025-12-04*
+*최종 수정일: 2025-12-20*

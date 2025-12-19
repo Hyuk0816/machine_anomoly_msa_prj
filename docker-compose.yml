@@ -82,6 +82,25 @@ services:
       timeout: 10s
       retries: 5
 
+  # Redis (Caching)
+  redis:
+    image: redis:7-alpine
+    container_name: machine_anomaly_redis
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - machine_anomaly_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Kafka UI (Monitoring)
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -117,6 +136,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env_portal
     ports:
@@ -135,6 +156,8 @@ services:
       postgres:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     env_file:
       - .env_ai_server
@@ -157,6 +180,8 @@ services:
       postgres:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     env_file:
       - .env_ai_server
@@ -192,6 +217,8 @@ volumes:
   zookeeper_logs:
     driver: local
   kafka_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:
