@@ -9,8 +9,9 @@ import logging
 import uvicorn
 
 from src.api.routers import router
+from src.api.anomaly_routers import router as anomaly_router
 from src.config import settings, validate_settings
-from src.db.repositories import get_outbox_repository
+from src.db.repositories import get_anomaly_repository
 
 # 로깅 설정
 logging.basicConfig(
@@ -41,9 +42,9 @@ async def lifespan(app: FastAPI):
 
         # 2. 데이터베이스 테이블 생성 (개발 환경용)
         logger.info("데이터베이스 테이블 확인 중...")
-        repository = get_outbox_repository()
-        repository.create_tables()
-        logger.info("✅ 데이터베이스 준비 완료")
+        anomaly_repo = get_anomaly_repository()
+        anomaly_repo.create_tables()
+        logger.info("Database tables ready (AnomalyHistory)")
 
         # 3. ML 모델 로딩 확인
         logger.info("ML 모델 로딩 확인 중...")
@@ -84,7 +85,6 @@ async def lifespan(app: FastAPI):
 
             get_alert_producer().close()
             get_machine_cache().close()
-            get_outbox_repository().close()
 
             logger.info("✅ 리소스 정리 완료")
         except Exception as e:
@@ -108,6 +108,7 @@ app = FastAPI(
 
 # 라우터 등록
 app.include_router(router)
+app.include_router(anomaly_router)
 
 
 # 직접 실행 시

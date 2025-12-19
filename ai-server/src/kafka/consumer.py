@@ -14,9 +14,10 @@ import signal
 from ..config import settings
 from ..ml.predictor import get_predictor
 from ..cache.machine_cache import get_machine_cache
-from ..db.repositories import get_outbox_repository
-from ..db.models import Outbox
+from ..db.repositories import get_anomaly_repository
+from ..db.models import AnomalyHistory
 from .producer import get_alert_producer
+from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class SensorDataConsumer:
     센서 데이터 Consumer
 
     sensor-raw-data 토픽에서 데이터를 수신하여
-    실시간 이상 탐지를 수행하고 결과를 Outbox에 저장합니다.
+    실시간 이상 탐지를 수행하고 결과를 AnomalyHistory에 저장합니다.
     """
 
     def __init__(self):
@@ -50,7 +51,7 @@ class SensorDataConsumer:
             # 의존성 주입 (싱글톤 인스턴스들)
             self.predictor = get_predictor()
             self.cache = get_machine_cache()  # 캐시 미스 시 자동 DB 조회
-            self.repository = get_outbox_repository()
+            self.anomaly_repository = get_anomaly_repository()
             self.alert_producer = get_alert_producer()
 
             # 실행 플래그
@@ -225,8 +226,8 @@ class SensorDataConsumer:
         """
         이상 탐지 시 처리 로직
 
-        1. Outbox에 이벤트 저장 → Debezium CDC가 감지 → Kafka 발행
-        2. (선택적) 직접 Kafka로도 알림 발행 가능
+        1. AnomalyHistory에 이상 탐지 이력 저장
+        2. Kafka로 알림 발행
 
         Args:
             machine_id: 머신 ID
@@ -234,36 +235,55 @@ class SensorDataConsumer:
             prediction_result: 예측 결과
         """
         logger.warning(
-            f"🚨 이상 탐지! machine_id={machine_id}, "
+            f"Anomaly detected - machine_id={machine_id}, "
             f"anomaly_prob={prediction_result.get('anomaly_probability', 0):.4f}"
         )
 
         try:
-            # Outbox 이벤트 생성
-            outbox_event = Outbox.create_anomaly_event(
+            # 한국 시간대 (KST)
+            kst = timezone(timedelta(hours=9))
+            now_kst = datetime.now(kst)
+            detected_at = now_kst.replace(tzinfo=None)
+
+            # 1. AnomalyHistory 저장
+            anomaly_history = AnomalyHistory.create_from_prediction(
                 machine_id=machine_id,
                 sensor_data=sensor_data,
-                prediction_result=prediction_result
+                prediction_result=prediction_result,
+                detected_at=detected_at
             )
-
-            # DB에 저장 (Debezium CDC가 이를 감지하여 Kafka로 발행)
-            saved_event = self.repository.save_event(outbox_event)
+            saved_anomaly = self.anomaly_repository.save_anomaly(anomaly_history)
 
             logger.info(
-                f"Outbox 이벤트 저장 완료: "
-                f"id={saved_event.id}, "
-                f"aggregate_id={saved_event.aggregate_id}"
+                f"AnomalyHistory saved: "
+                f"id={saved_anomaly.id}, "
+                f"machine_id={saved_anomaly.machine_id}, "
+                f"severity={saved_anomaly.severity}"
             )
 
-            # (선택적) 즉시 Kafka로도 발행
-            # Debezium과 별개로 실시간 알림이 필요한 경우 아래 주석 해제
+            # 2. Kafka로 알림 발행
+            # detected_at을 한국 시간(KST)으로 포맷 (Java LocalDateTime 호환)
+            detected_at_str = now_kst.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+
+            alert_payload = {
+                "machine_id": machine_id,
+                "sensor_data": sensor_data,
+                "prediction": {
+                    "is_anomaly": prediction_result["is_anomaly"],
+                    "anomaly_probability": prediction_result.get("anomaly_probability"),
+                    "machine_type": prediction_result["machine_type"],
+                    "severity": prediction_result.get("severity", "UNKNOWN")
+                },
+                "detected_at": detected_at_str
+            }
+
             self.alert_producer.send_anomaly_alert(
                 machine_id=machine_id,
-                alert_data=outbox_event.payload
+                alert_data=alert_payload
             )
 
         except Exception as e:
-            logger.error(f"이상 탐지 이벤트 저장 실패: {e}")
+            logger.error(f"Anomaly event handling failed: {e}")
 
     def _signal_handler(self, signum, frame):
         """시그널 핸들러 (Ctrl+C, SIGTERM)"""
@@ -283,7 +303,7 @@ class SensorDataConsumer:
             # 리소스 정리
             self.alert_producer.close()
             self.cache.close()
-            self.repository.close()
+            self.anomaly_repository.close()
 
         except Exception as e:
             logger.error(f"Consumer 종료 중 오류: {e}")
