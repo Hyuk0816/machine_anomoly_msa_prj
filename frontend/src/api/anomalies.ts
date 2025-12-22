@@ -1,12 +1,12 @@
-import { apiClient } from './client';
+import { aiClient } from './aiClient';
 import type { AnomalyHistoryResponseDto } from '../types/api';
 
 export const anomalyApi = {
   getAll: () =>
-    apiClient.get<AnomalyHistoryResponseDto[]>('/api/anomaly-histories'),
+    aiClient.get<AnomalyHistoryResponseDto[]>('/anomaly-histories'),
 
   search: (startDate: string, endDate: string) =>
-    apiClient.get<AnomalyHistoryResponseDto[]>('/api/anomaly-histories/search', {
+    aiClient.get<AnomalyHistoryResponseDto[]>('/anomaly-histories/search', {
       params: {
         start: startDate,
         end: endDate,

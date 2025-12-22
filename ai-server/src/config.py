@@ -49,6 +49,15 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str
 
+    # Redis Configuration
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: Optional[str] = None
+    REDIS_MAX_CONNECTIONS: int = 10
+    REDIS_SOCKET_TIMEOUT: float = 5.0
+    REDIS_DECODE_RESPONSES: bool = True
+
     # Anomaly Detection Thresholds (다단계 알람)
     WARNING_THRESHOLD: float = 0.3   # 30% - 경고 (WARNING)
     ALERT_THRESHOLD: float = 0.5     # 50% - 주의 (ALERT)
@@ -75,6 +84,13 @@ class Settings(BaseSettings):
     def kafka_servers_list(self) -> list:
         """Kafka bootstrap servers as list"""
         return self.KAFKA_BOOTSTRAP_SERVERS.split(',')
+
+    @property
+    def redis_url(self) -> str:
+        """Redis connection URL"""
+        if self.REDIS_PASSWORD:
+            return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
     def get_model_path(self, relative_path: str) -> Path:
         """

@@ -82,6 +82,25 @@ services:
       timeout: 10s
       retries: 5
 
+  # Redis (Caching)
+  redis:
+    image: redis:7-alpine
+    container_name: machine_anomaly_redis
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - machine_anomaly_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Kafka UI (Monitoring)
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -102,6 +121,40 @@ services:
       - machine_anomaly_network
 
   # ========================
+  # LLM Service
+  # ========================
+
+  # Ollama (LLM Server)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: machine_anomaly_ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gpt-oss:20b}
+      TZ: Asia/Seoul
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./scripts/init-ollama.sh:/init-ollama.sh:ro
+    entrypoint: ["/bin/bash", "/init-ollama.sh"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - machine_anomaly_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ========================
   # Application Services
   # ========================
 
@@ -116,6 +169,8 @@ services:
       postgres:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     env_file:
       - .env_portal
@@ -135,6 +190,8 @@ services:
       postgres:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     env_file:
       - .env_ai_server
@@ -157,6 +214,8 @@ services:
       postgres:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     env_file:
       - .env_ai_server
@@ -192,6 +251,10 @@ volumes:
   zookeeper_logs:
     driver: local
   kafka_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
     driver: local
 
 networks:
