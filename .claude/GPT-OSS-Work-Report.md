@@ -291,7 +291,14 @@ AI Server (LLM Tool) -> Redis (설비 조회)
 - **산출물**: LLM Dockerfile, docker-compose 업데이트
 - **의존성**: 없음
 - **Context7 참조**: Ollama, vLLM, Docker
-- **변경 이력**: -
+- **변경 이력**:
+  - 2025-12-23 01:00: Ollama Docker 환경 구성 완료
+    - `docker-compose.yml`: Ollama 서비스 추가 (ollama/ollama:latest)
+    - GPU 지원: NVIDIA Container Toolkit 설정 (deploy.resources.reservations.devices)
+    - `scripts/init-ollama.sh`: 자동 모델 다운로드 스크립트 생성
+    - `ollama_data` 볼륨 추가 (모델 영속화)
+    - healthcheck 설정 (start_period: 60s, 모델 다운로드 대기)
+    - 환경 변수: OLLAMA_MODEL (기본값: gpt-oss:20b), OLLAMA_PORT (기본값: 11434)
 
 #### Step 1-2: GPT-OSS 20B 모델 다운로드 및 설정
 
@@ -301,7 +308,12 @@ AI Server (LLM Tool) -> Redis (설비 조회)
 - **산출물**: 모델 파일, 설정 파일
 - **의존성**: Step 1-1
 - **Context7 참조**: Hugging Face, Ollama
-- **변경 이력**: -
+- **변경 이력**:
+  - 2025-12-23 01:48: GPT-OSS 20B 모델 다운로드 완료
+    - Docker 컨테이너 내에서 `ollama pull gpt-oss:20b` 실행
+    - 모델 정보: gptoss family, 20.9B parameters, MXFP4 quantization
+    - 파일 크기: 약 13.8GB
+    - 저장 위치: `ollama_data` Docker 볼륨 (`/root/.ollama/models`)
 
 #### Step 1-3: VRAM 점유율 테스트
 
@@ -312,7 +324,12 @@ AI Server (LLM Tool) -> Redis (설비 조회)
 - **산출물**: 테스트 결과 보고서
 - **의존성**: Step 1-2
 - **Context7 참조**: NVIDIA SMI
-- **변경 이력**: -
+- **변경 이력**:
+  - 2025-12-23 01:56: VRAM 점유율 테스트 완료
+    - GPU: NVIDIA GeForce RTX 5060 Ti (16GB VRAM)
+    - Ollama 동작 방식: 요청 시 모델 로드, 5분 후 자동 언로드
+    - 테스트 결과: 모델 미사용 시 VRAM 거의 점유 안함, 추론 시 로드됨
+    - low vram mode 활성화 (threshold: 20GB)
 
 ---
 
@@ -533,9 +550,9 @@ AI Server (LLM Tool) -> Redis (설비 조회)
 | 0 | 0-7 | AI Server Redis Client 추가 | 완료 | 2025-12-20 01:30 | 2025-12-20 01:39 |
 | 0 | 0-8 | Frontend API 엔드포인트 변경 | 완료 | 2025-12-20 01:40 | 2025-12-20 01:42 |
 | 0 | 0-9 | Docker Compose 업데이트 | 완료 | 2025-12-20 01:43 | 2025-12-20 01:46 |
-| 1 | 1-1 | LLM Docker 환경 구성 | 대기 | - | - |
-| 1 | 1-2 | GPT-OSS 20B 모델 다운로드 | 대기 | - | - |
-| 1 | 1-3 | VRAM 점유율 테스트 | 대기 | - | - |
+| 1 | 1-1 | LLM Docker 환경 구성 | 완료 | 2025-12-23 00:56 | 2025-12-23 01:00 |
+| 1 | 1-2 | GPT-OSS 20B 모델 다운로드 | 완료 | 2025-12-23 01:00 | 2025-12-23 01:48 |
+| 1 | 1-3 | VRAM 점유율 테스트 | 완료 | 2025-12-23 01:48 | 2025-12-23 01:56 |
 | 2 | 2-1 | Function Schema 정의 | 대기 | - | - |
 | 2 | 2-2 | get_machine_id Tool 구현 | 대기 | - | - |
 | 2 | 2-3 | get_anomaly_status Tool 구현 | 대기 | - | - |
@@ -554,4 +571,4 @@ AI Server (LLM Tool) -> Redis (설비 조회)
 ---
 
 *문서 작성일: 2025-12-04*
-*최종 수정일: 2025-12-20*
+*최종 수정일: 2025-12-23*

@@ -121,6 +121,40 @@ services:
       - machine_anomaly_network
 
   # ========================
+  # LLM Service
+  # ========================
+
+  # Ollama (LLM Server)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: machine_anomaly_ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gpt-oss:20b}
+      TZ: Asia/Seoul
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./scripts/init-ollama.sh:/init-ollama.sh:ro
+    entrypoint: ["/bin/bash", "/init-ollama.sh"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - machine_anomaly_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ========================
   # Application Services
   # ========================
 
@@ -219,6 +253,8 @@ volumes:
   kafka_data:
     driver: local
   redis_data:
+    driver: local
+  ollama_data:
     driver: local
 
 networks:
